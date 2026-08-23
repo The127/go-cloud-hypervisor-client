@@ -1,0 +1,35 @@
+name: Tag release
+
+# Tags this module's MINOR version after cloud-hypervisor's release number, e.g. CH_VERSION=v54.0
+# -> git tag v0.54.0. The module stays on major version 0 (no /vN import path suffix, so `go get`
+# and `go get -u` work normally) while still making the correspondence to the cloud-hypervisor
+# release explicit and greppable. Runs whenever CH_VERSION changes on main (initial setup or a
+# merged bump-cloud-hypervisor PR).
+
+on:
+  push:
+    branches: [main]
+    paths: [CH_VERSION]
+
+permissions:
+  contents: write
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Tag if this cloud-hypervisor version isn't already tagged
+        run: |
+          ch_version=$(cat CH_VERSION)
+          minor=$(echo "$ch_version" | sed -E 's/^v([0-9]+).*/\1/')
+          tag="v0.${minor}.0"
+          if git rev-parse "$tag" >/dev/null 2>&1; then
+            echo "$tag is already tagged, skipping"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "$tag" -m "cloud-hypervisor $ch_version"
+          git push origin "$tag"

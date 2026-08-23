@@ -1,0 +1,71 @@
+name: Check for new cloud-hypervisor release
+
+on:
+  schedule:
+    # Daily at 06:00 UTC.
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+    inputs:
+      current_version_override:
+        description: >-
+          Pretend the pinned version is this (e.g. v52.0) instead of reading CH_VERSION, to test
+          the update check without touching the repo. Leave blank for normal operation.
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  check-and-bump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Install just
+        uses: extractions/setup-just@v2
+
+      - name: Check for a newer cloud-hypervisor release
+        id: check
+        env:
+          OVERRIDE: ${{ inputs.current_version_override }}
+        run: |
+          if [ -n "$OVERRIDE" ]; then
+            check_args="$OVERRIDE"
+          else
+            check_args=""
+          fi
+          if new_version=$(just check-update $check_args); then
+            echo "new_version=$new_version" >> "$GITHUB_OUTPUT"
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Regenerate client
+        if: steps.check.outputs.found == 'true'
+        run: just generate ${{ steps.check.outputs.new_version }}
+
+      - name: Open pull request
+        if: steps.check.outputs.found == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore: bump cloud-hypervisor to ${{ steps.check.outputs.new_version }}"
+          title: "chore: bump cloud-hypervisor to ${{ steps.check.outputs.new_version }}"
+          body: |
+            Regenerated the client against cloud-hypervisor [${{ steps.check.outputs.new_version }}](https://github.com/cloud-hypervisor/cloud-hypervisor/releases/tag/${{ steps.check.outputs.new_version }}).
+
+            This PR was opened automatically by the `bump-cloud-hypervisor` workflow. Review the
+            diff in `client.gen.go` before merging, and check the release notes for breaking API
+            changes.
+          branch: bump-cloud-hypervisor-${{ steps.check.outputs.new_version }}
+          delete-branch: true
+          labels: |
+            dependencies
+            automated
