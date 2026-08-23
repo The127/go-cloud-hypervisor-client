@@ -128,6 +128,24 @@ func (e MemoryRestoreMode) Valid() bool {
 	}
 }
 
+// Defines values for MigrationMode.
+const (
+	Postcopy MigrationMode = "Postcopy"
+	Precopy  MigrationMode = "Precopy"
+)
+
+// Valid indicates whether the value is a known member of the MigrationMode enum.
+func (e MigrationMode) Valid() bool {
+	switch e {
+	case Postcopy:
+		return true
+	case Precopy:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for TimeoutStrategy.
 const (
 	Cancel TimeoutStrategy = "Cancel"
@@ -176,8 +194,12 @@ type BalloonConfig struct {
 	DeflateOnOom *bool `json:"deflate_on_oom,omitempty"`
 
 	// FreePageReporting Enable guest to report free pages.
-	FreePageReporting *bool `json:"free_page_reporting,omitempty"`
-	Size              int64 `json:"size"`
+	FreePageReporting *bool   `json:"free_page_reporting,omitempty"`
+	Id                *string `json:"id,omitempty"`
+	Iommu             *bool   `json:"iommu,omitempty"`
+	PciDeviceId       *uint8  `json:"pci_device_id,omitempty"`
+	PciSegment        *int16  `json:"pci_segment,omitempty"`
+	Size              int64   `json:"size"`
 }
 
 // ConsoleConfig defines model for ConsoleConfig.
@@ -238,9 +260,14 @@ type DebugConsoleConfig struct {
 
 // DeviceConfig defines model for DeviceConfig.
 type DeviceConfig struct {
-	Id                 *string  `json:"id,omitempty"`
-	Iommu              *bool    `json:"iommu,omitempty"`
-	Path               string   `json:"path"`
+	Id    *string `json:"id,omitempty"`
+	Iommu *bool   `json:"iommu,omitempty"`
+
+	// Path Sysfs path of the VFIO device. Exactly one of `path` or an
+	// externally-opened cdev FD must be supplied; an FD is passed
+	// out of band via SCM_RIGHTS on the UNIX domain socket, never
+	// in this body.
+	Path               *string  `json:"path,omitempty"`
 	PciDeviceId        *uint8   `json:"pci_device_id,omitempty"`
 	PciSegment         *int16   `json:"pci_segment,omitempty"`
 	XExcludeMmapBars   *[]int64 `json:"x_exclude_mmap_bars,omitempty"`
@@ -293,11 +320,11 @@ type FsConfig struct {
 
 // GenericVhostUserConfig defines model for GenericVhostUserConfig.
 type GenericVhostUserConfig struct {
-	PciDeviceId *uint8    `json:"pci_device_id,omitempty"`
-	PciSegment  *int16    `json:"pci_segment,omitempty"`
-	QueueSize   *[]uint16 `json:"queue_size,omitempty"`
-	Socket      string    `json:"socket"`
-	VirtioId    uint32    `json:"virtio_id"`
+	DeviceType  uint32   `json:"device_type"`
+	PciDeviceId *uint8   `json:"pci_device_id,omitempty"`
+	PciSegment  *int16   `json:"pci_segment,omitempty"`
+	QueueSizes  []uint16 `json:"queue_sizes"`
+	Socket      string   `json:"socket"`
 }
 
 // ImageType defines model for ImageType.
@@ -321,6 +348,7 @@ type MemoryConfig struct {
 	Hugepages      *bool               `json:"hugepages,omitempty"`
 	Mergeable      *bool               `json:"mergeable,omitempty"`
 	Prefault       *bool               `json:"prefault,omitempty"`
+	Reserve        *bool               `json:"reserve,omitempty"`
 	Shared         *bool               `json:"shared,omitempty"`
 	Size           int64               `json:"size"`
 	Thp            *bool               `json:"thp,omitempty"`
@@ -341,9 +369,13 @@ type MemoryZoneConfig struct {
 	Id             string  `json:"id"`
 	Mergeable      *bool   `json:"mergeable,omitempty"`
 	Prefault       *bool   `json:"prefault,omitempty"`
+	Reserve        *bool   `json:"reserve,omitempty"`
 	Shared         *bool   `json:"shared,omitempty"`
 	Size           int64   `json:"size"`
 }
+
+// MigrationMode Memory transfer mode. Precopy transfers all guest memory before the destination resumes. Postcopy resumes the destination first and faults guest pages in on demand.
+type MigrationMode string
 
 // NetConfig defines model for NetConfig.
 type NetConfig struct {
@@ -415,16 +447,26 @@ type PciSegmentConfig struct {
 
 // PlatformConfig defines model for PlatformConfig.
 type PlatformConfig struct {
-	IommuAddressWidth *uint8    `json:"iommu_address_width,omitempty"`
-	IommuSegments     *[]int16  `json:"iommu_segments,omitempty"`
-	Iommufd           *bool     `json:"iommufd,omitempty"`
-	NumPciSegments    *int16    `json:"num_pci_segments,omitempty"`
-	OemStrings        *[]string `json:"oem_strings,omitempty"`
-	SerialNumber      *string   `json:"serial_number,omitempty"`
-	SevSnp            *bool     `json:"sev_snp,omitempty"`
-	Tdx               *bool     `json:"tdx,omitempty"`
-	Uuid              *string   `json:"uuid,omitempty"`
-	VfioP2pDma        *bool     `json:"vfio_p2p_dma,omitempty"`
+	ChassisAssetTag       *string   `json:"chassis_asset_tag,omitempty"`
+	IommuAddressWidthBits *uint8    `json:"iommu_address_width_bits,omitempty"`
+	IommuSegments         *[]int16  `json:"iommu_segments,omitempty"`
+	Iommufd               *bool     `json:"iommufd,omitempty"`
+	NumPciSegments        *int16    `json:"num_pci_segments,omitempty"`
+	OemStrings            *[]string `json:"oem_strings,omitempty"`
+	// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
+	SerialNumber       *string `json:"serial_number,omitempty"`
+	SevSnp             *bool   `json:"sev_snp,omitempty"`
+	SystemFamily       *string `json:"system_family,omitempty"`
+	SystemManufacturer *string `json:"system_manufacturer,omitempty"`
+	SystemProductName  *string `json:"system_product_name,omitempty"`
+	SystemSerialNumber *string `json:"system_serial_number,omitempty"`
+	SystemSkuNumber    *string `json:"system_sku_number,omitempty"`
+	SystemUuid         *string `json:"system_uuid,omitempty"`
+	SystemVersion      *string `json:"system_version,omitempty"`
+	Tdx                *bool   `json:"tdx,omitempty"`
+	// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
+	Uuid       *string `json:"uuid,omitempty"`
+	VfioP2pDma *bool   `json:"vfio_p2p_dma,omitempty"`
 }
 
 // PmemConfig defines model for PmemConfig.
@@ -457,7 +499,12 @@ type RateLimiterConfig struct {
 
 // ReceiveMigrationData defines model for ReceiveMigrationData.
 type ReceiveMigrationData struct {
-	ReceiverUrl string `json:"receiver_url"`
+	// MemoryMode Memory transfer mode. Precopy transfers all guest memory before the destination resumes. Postcopy resumes the destination first and faults guest pages in on demand.
+	MemoryMode  *MigrationMode `json:"memory_mode,omitempty"`
+	ReceiverUrl string         `json:"receiver_url"`
+
+	// TlsDir Directory containing the TLS server certificate (server-cert.pem), the TLS server key (server-key.pem), and the client TLS root CA certificate (ca-cert.pem). TLS is only supported with tcp:<host>:<port> receiver URLs.
+	TlsDir *string `json:"tls_dir,omitempty"`
 }
 
 // RestoreConfig defines model for RestoreConfig.
@@ -477,6 +524,14 @@ type RngConfig struct {
 	Src         string  `json:"src"`
 }
 
+// RtcConfig defines model for RtcConfig.
+type RtcConfig struct {
+	Id          *string `json:"id,omitempty"`
+	Iommu       *bool   `json:"iommu,omitempty"`
+	PciDeviceId *uint8  `json:"pci_device_id,omitempty"`
+	PciSegment  *int16  `json:"pci_segment,omitempty"`
+}
+
 // SendMigrationData defines model for SendMigrationData.
 type SendMigrationData struct {
 	// Connections The number of parallel TCP connections to use for migration. Must be between 1 and 128. Multiple connections are not supported with local UNIX-socket migration.
@@ -487,11 +542,17 @@ type SendMigrationData struct {
 	DowntimeMs *int64 `json:"downtime_ms,omitempty"`
 	Local      *bool  `json:"local,omitempty"`
 
+	// MemoryMode Memory transfer mode. Precopy transfers all guest memory before the destination resumes. Postcopy resumes the destination first and faults guest pages in on demand.
+	MemoryMode *MigrationMode `json:"memory_mode,omitempty"`
+
 	// TimeoutS The timeout for the migration (maximum total duration), in seconds. Defaults to 3600s (one hour).
 	TimeoutS *int64 `json:"timeout_s,omitempty"`
 
 	// TimeoutStrategy The strategy to apply when the migration timeout is reached. Cancel will abort the migration and keep the VM running on the source. Ignore will proceed with the migration regardless of the downtime requirement.
 	TimeoutStrategy *TimeoutStrategy `json:"timeout_strategy,omitempty"`
+
+	// TlsDir Directory containing the TLS root CA certificate (ca-cert.pem), the TLS client certificate (client-cert.pem), and TLS client key (client-key.pem). TLS is only supported with tcp:<host>:<port> destination URLs.
+	TlsDir *string `json:"tls_dir,omitempty"`
 }
 
 // SerialConfig defines model for SerialConfig.
@@ -577,6 +638,7 @@ type VmConfig struct {
 	Pvpanic         *bool                   `json:"pvpanic,omitempty"`
 	RateLimitGroups *[]RateLimitGroupConfig `json:"rate_limit_groups,omitempty"`
 	Rng             *RngConfig              `json:"rng,omitempty"`
+	Rtc             *RtcConfig              `json:"rtc,omitempty"`
 	Serial          *SerialConfig           `json:"serial,omitempty"`
 	Tpm             *TpmConfig              `json:"tpm,omitempty"`
 	UserDevices     *[]UserDeviceConfig     `json:"user_devices,omitempty"`
@@ -967,6 +1029,11 @@ type ClientInterface interface {
 	// Corresponds with GET /vm.info (the `GetVmInfo` operationId).
 	GetVmInfo(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// PutVmNmi Inject an NMI.
+	//
+	// Corresponds with PUT /vm.nmi (the `PutVmNmi` operationId).
+	PutVmNmi(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// PauseVM Pause a previously booted VM instance.
 	//
 	// Corresponds with PUT /vm.pause (the `PauseVM` operationId).
@@ -1103,11 +1170,6 @@ type ClientInterface interface {
 	//
 	// Corresponds with PUT /vm.snapshot (the `PutVmSnapshot` operationId).
 	PutVmSnapshot(ctx context.Context, body PutVmSnapshotJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// PutVmmNmi Inject an NMI.
-	//
-	// Corresponds with PUT /vmm.nmi (the `PutVmmNmi` operationId).
-	PutVmmNmi(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetVmmPing Ping the VMM to check for API server availability
 	//
@@ -1554,6 +1616,21 @@ func (c *Client) GetVmInfo(ctx context.Context, reqEditors ...RequestEditorFn) (
 	return c.Client.Do(req)
 }
 
+// PutVmNmi Inject an NMI.
+//
+// Corresponds with PUT /vm.nmi (the `PutVmNmi` operationId).
+func (c *Client) PutVmNmi(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPutVmNmiRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // PauseVM Pause a previously booted VM instance.
 //
 // Corresponds with PUT /vm.pause (the `PauseVM` operationId).
@@ -1891,21 +1968,6 @@ func (c *Client) PutVmSnapshotWithBody(ctx context.Context, contentType string, 
 // Corresponds with PUT /vm.snapshot (the `PutVmSnapshot` operationId).
 func (c *Client) PutVmSnapshot(ctx context.Context, body PutVmSnapshotJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPutVmSnapshotRequest(c.Server, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-// PutVmmNmi Inject an NMI.
-//
-// Corresponds with PUT /vmm.nmi (the `PutVmmNmi` operationId).
-func (c *Client) PutVmmNmi(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPutVmmNmiRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -2494,6 +2556,33 @@ func NewGetVmInfoRequest(server string) (*http.Request, error) {
 	return req, nil
 }
 
+// NewPutVmNmiRequest constructs an http.Request for the PutVmNmi method
+func NewPutVmNmiRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/vm.nmi")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewPauseVMRequest constructs an http.Request for the PauseVM method
 func NewPauseVMRequest(server string) (*http.Request, error) {
 	var err error
@@ -2949,33 +3038,6 @@ func NewPutVmSnapshotRequestWithBody(server string, contentType string, body io.
 	return req, nil
 }
 
-// NewPutVmmNmiRequest constructs an http.Request for the PutVmmNmi method
-func NewPutVmmNmiRequest(server string) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/vmm.nmi")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest(http.MethodPut, queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
 // NewGetVmmPingRequest constructs an http.Request for the GetVmmPing method
 func NewGetVmmPingRequest(server string) (*http.Request, error) {
 	var err error
@@ -3256,6 +3318,13 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /vm.info (the `GetVmInfo` operationId).
 	GetVmInfoWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetVmInfoResponse, error)
 
+	// PutVmNmiWithResponse Inject an NMI.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /vm.nmi (the `PutVmNmi` operationId).
+	PutVmNmiWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*PutVmNmiResponse, error)
+
 	// PauseVMWithResponse Pause a previously booted VM instance.
 	//
 	// Returns a wrapper object for the known response body format(s).
@@ -3402,13 +3471,6 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with PUT /vm.snapshot (the `PutVmSnapshot` operationId).
 	PutVmSnapshotWithResponse(ctx context.Context, body PutVmSnapshotJSONRequestBody, reqEditors ...RequestEditorFn) (*PutVmSnapshotResponse, error)
-
-	// PutVmmNmiWithResponse Inject an NMI.
-	//
-	// Returns a wrapper object for the known response body format(s).
-	//
-	// Corresponds with PUT /vmm.nmi (the `PutVmmNmi` operationId).
-	PutVmmNmiWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*PutVmmNmiResponse, error)
 
 	// GetVmmPingWithResponse Ping the VMM to check for API server availability
 	//
@@ -4012,6 +4074,40 @@ func (r GetVmInfoResponse) ContentType() string {
 	return ""
 }
 
+type PutVmNmiResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+}
+
+// GetBody returns the raw response body bytes
+func (r PutVmNmiResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r PutVmNmiResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PutVmNmiResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PutVmNmiResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type PauseVMResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -4454,40 +4550,6 @@ func (r PutVmSnapshotResponse) ContentType() string {
 	return ""
 }
 
-type PutVmmNmiResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-}
-
-// GetBody returns the raw response body bytes
-func (r PutVmmNmiResponse) GetBody() []byte {
-	return r.Body
-}
-
-// Status returns HTTPResponse.Status
-func (r PutVmmNmiResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r PutVmmNmiResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r PutVmmNmiResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
 type GetVmmPingResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -4901,6 +4963,19 @@ func (c *ClientWithResponses) GetVmInfoWithResponse(ctx context.Context, reqEdit
 	return ParseGetVmInfoResponse(rsp)
 }
 
+// PutVmNmiWithResponse Inject an NMI.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /vm.nmi (the `PutVmNmi` operationId).
+func (c *ClientWithResponses) PutVmNmiWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*PutVmNmiResponse, error) {
+	rsp, err := c.PutVmNmi(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePutVmNmiResponse(rsp)
+}
+
 // PauseVMWithResponse Pause a previously booted VM instance.
 //
 // Returns a wrapper object for the known response body format(s).
@@ -5172,19 +5247,6 @@ func (c *ClientWithResponses) PutVmSnapshotWithResponse(ctx context.Context, bod
 		return nil, err
 	}
 	return ParsePutVmSnapshotResponse(rsp)
-}
-
-// PutVmmNmiWithResponse Inject an NMI.
-//
-// Returns a wrapper object for the known response body format(s).
-//
-// Corresponds with PUT /vmm.nmi (the `PutVmmNmi` operationId).
-func (c *ClientWithResponses) PutVmmNmiWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*PutVmmNmiResponse, error) {
-	rsp, err := c.PutVmmNmi(ctx, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParsePutVmmNmiResponse(rsp)
 }
 
 // GetVmmPingWithResponse Ping the VMM to check for API server availability
@@ -5617,6 +5679,22 @@ func ParseGetVmInfoResponse(rsp *http.Response) (*GetVmInfoResponse, error) {
 	return response, nil
 }
 
+// ParsePutVmNmiResponse parses an HTTP response from a PutVmNmiWithResponse call
+func ParsePutVmNmiResponse(rsp *http.Response) (*PutVmNmiResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PutVmNmiResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	return response, nil
+}
+
 // ParsePauseVMResponse parses an HTTP response from a PauseVMWithResponse call
 func ParsePauseVMResponse(rsp *http.Response) (*PauseVMResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -5818,22 +5896,6 @@ func ParsePutVmSnapshotResponse(rsp *http.Response) (*PutVmSnapshotResponse, err
 	}
 
 	response := &PutVmSnapshotResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	return response, nil
-}
-
-// ParsePutVmmNmiResponse parses an HTTP response from a PutVmmNmiWithResponse call
-func ParsePutVmmNmiResponse(rsp *http.Response) (*PutVmmNmiResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &PutVmmNmiResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
