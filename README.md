@@ -15,12 +15,20 @@ generated with [oapi-codegen](https://github.com/oapi-codegen/oapi-codegen).
 go get github.com/the127/go-cloud-hypervisor-client
 ```
 
-This module's MINOR version tracks cloud-hypervisor's release number: `v0.53.0` is generated from
+This module's MINOR version tracks cloud-hypervisor's release number: `v0.53.1` is generated from
 cloud-hypervisor `v53.0`. Pin to a specific cloud-hypervisor version with:
 
 ```sh
-go get github.com/the127/go-cloud-hypervisor-client@v0.53.0
+go get github.com/the127/go-cloud-hypervisor-client@v0.53.1
 ```
+
+<!-- pinned-tag-notice:start -->
+> **Note:** don't use `v0.53.0`. It was cached by the Go module proxy with stale content from
+> before this repo's git history was rewritten during initial setup, so `go get ...@v0.53.0` can
+> resolve to code that doesn't match `CH_VERSION` or what's on `main`. `v0.53.1` points at the
+> same, correct `v53.0`-generated content under a tag the proxy hadn't already cached. This note
+> is intentionally excluded from the version auto-sync in `justfile` and stays as-is.
+<!-- pinned-tag-notice:end -->
 
 ## Usage
 

@@ -12,11 +12,13 @@ generate ch_version=default_ch_version:
         -config oapi-codegen.yaml openapi.yaml
     echo "{{ch_version}}" > CH_VERSION
     ch_major=$(echo "{{ch_version}}" | sed -E 's/^v([0-9]+).*/\1/')
-    # Keep README's version references (module tag v0.N.0 and raw cloud-hypervisor tag vN.M) in
-    # sync. Module tag pattern (v0.*.0) is replaced first so it can't be re-matched by the second,
-    # broader vN.M pattern.
-    sed -i -E "s/v0\.[0-9]+\.0/v0.${ch_major}.0/g" README.md
-    sed -i -E "s/v[1-9][0-9]*\.[0-9]+/{{ch_version}}/g" README.md
+    # Keep README's version references (module tag v0.N.M and raw cloud-hypervisor tag vN.M) in
+    # sync, except inside the pinned-tag-notice block, which documents a specific past tag and
+    # must never change. Module tag pattern (v0.*.*, any patch) is replaced first, and always
+    # resets patch to 0, so it can't be re-matched by the second, broader vN.M pattern.
+    notice_range='/<!-- pinned-tag-notice:start -->/,/<!-- pinned-tag-notice:end -->/'
+    sed -i -E "${notice_range}! s/v0\.[0-9]+\.[0-9]+/v0.${ch_major}.0/g" README.md
+    sed -i -E "${notice_range}! s/v[1-9][0-9]*\.[0-9]+/{{ch_version}}/g" README.md
     gofmt -l . && go build ./...
 
 # Print the cloud-hypervisor tag this client is currently generated from.
