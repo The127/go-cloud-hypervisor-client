@@ -15,11 +15,11 @@ generated with [oapi-codegen](https://github.com/oapi-codegen/oapi-codegen).
 go get github.com/the127/go-cloud-hypervisor-client
 ```
 
-This module's MINOR version tracks cloud-hypervisor's release number: `v0.52.0` is generated from
-cloud-hypervisor `v52.0`. Pin to a specific cloud-hypervisor version with:
+This module's MINOR version tracks cloud-hypervisor's release number: `v0.53.0` is generated from
+cloud-hypervisor `v53.0`. Pin to a specific cloud-hypervisor version with:
 
 ```sh
-go get github.com/the127/go-cloud-hypervisor-client@v0.52.0
+go get github.com/the127/go-cloud-hypervisor-client@v0.53.0
 ```
 
 ## Usage
@@ -92,7 +92,7 @@ in the spec.
 ## Compatibility
 
 This client is generated against a specific cloud-hypervisor release, currently
-[`v52.0`](https://github.com/cloud-hypervisor/cloud-hypervisor/releases/tag/v52.0) (see
+[`v53.0`](https://github.com/cloud-hypervisor/cloud-hypervisor/releases/tag/v53.0) (see
 [`CH_VERSION`](./CH_VERSION)). This module stays on major version 0 (Go requires a `/vN` import
 path suffix for major versions 2+, which isn't practical for a client that tracks a fast-moving
 upstream release-by-release), so cloud-hypervisor's release number is encoded in the MINOR version

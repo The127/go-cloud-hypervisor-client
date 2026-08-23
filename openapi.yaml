@@ -445,7 +445,7 @@ paths:
         405:
           description: The VM instance could not be coredumped because it is not booted.
 
-  /vmm.nmi:
+  /vm.nmi:
     put:
       summary: Inject an NMI.
       responses:
@@ -667,6 +667,8 @@ components:
         watchdog:
           type: boolean
           default: false
+        rtc:
+          $ref: "#/components/schemas/RtcConfig"
         pvpanic:
           type: boolean
           default: false
@@ -781,17 +783,35 @@ components:
           items:
             type: integer
             format: int16
-        iommu_address_width:
+        iommu_address_width_bits:
           type: integer
           format: uint8
+        system_serial_number:
+          type: string
         serial_number:
+          type: string
+          deprecated: true
+        system_uuid:
           type: string
         uuid:
           type: string
+          deprecated: true
         oem_strings:
           type: array
           items:
             type: string
+        system_manufacturer:
+          type: string
+        system_product_name:
+          type: string
+        system_version:
+          type: string
+        system_family:
+          type: string
+        system_sku_number:
+          type: string
+        chassis_asset_tag:
+          type: string
         tdx:
           type: boolean
           default: false
@@ -842,6 +862,9 @@ components:
         prefault:
           type: boolean
           default: false
+        reserve:
+          type: boolean
+          default: false
 
     MemoryConfig:
       required:
@@ -873,6 +896,9 @@ components:
           type: integer
           format: int64
         prefault:
+          type: boolean
+          default: false
+        reserve:
           type: boolean
           default: false
         thp:
@@ -1087,11 +1113,37 @@ components:
         src:
           type: string
 
+    RtcConfig:
+      type: object
+      properties:
+        id:
+          type: string
+        pci_segment:
+          type: integer
+          format: int16
+        pci_device_id:
+          type: integer
+          format: uint8
+        iommu:
+          type: boolean
+          default: false
+
     BalloonConfig:
       required:
         - size
       type: object
       properties:
+        id:
+          type: string
+        pci_segment:
+          type: integer
+          format: int16
+        pci_device_id:
+          type: integer
+          format: uint8
+        iommu:
+          type: boolean
+          default: false
         size:
           type: integer
           format: int64
@@ -1135,16 +1187,12 @@ components:
       required:
         - queue_sizes
         - socket
-        - tag
-        - virtio_id
+        - device_type
       type: object
       properties:
         socket:
           type: string
-        # queue_size/virtio_id: upstream v52.0 spec has invalid `type: uint16`/`type: uint32`
-        # (not valid OpenAPI types); patched to `type: integer, format: ...` so oapi-codegen can
-        # parse this historical spec. Fixed upstream by v53.0.
-        queue_size:
+        queue_sizes:
           type: array
           items:
             type: integer
@@ -1155,7 +1203,7 @@ components:
         pci_device_id:
           type: integer
           format: uint8
-        virtio_id:
+        device_type:
           type: integer
           format: uint32
 
@@ -1236,12 +1284,15 @@ components:
           type: integer
 
     DeviceConfig:
-      required:
-        - path
       type: object
       properties:
         path:
           type: string
+          description: |
+            Sysfs path of the VFIO device. Exactly one of `path` or an
+            externally-opened cdev FD must be supplied; an FD is passed
+            out of band via SCM_RIGHTS on the UNIX domain socket, never
+            in this body.
         iommu:
           type: boolean
           default: false
@@ -1457,6 +1508,23 @@ components:
       properties:
         receiver_url:
           type: string
+        tls_dir:
+          type: string
+          description: >
+            Directory containing the TLS server certificate (server-cert.pem), the TLS
+            server key (server-key.pem), and the client TLS root CA certificate (ca-cert.pem).
+            TLS is only supported with tcp:<host>:<port> receiver URLs.
+        memory_mode:
+          $ref: "#/components/schemas/MigrationMode"
+
+    MigrationMode:
+      type: string
+      enum: ["Precopy", "Postcopy"]
+      default: "Precopy"
+      description: >
+        Memory transfer mode. Precopy transfers all guest memory before the
+        destination resumes. Postcopy resumes the destination first and faults
+        guest pages in on demand.
 
     TimeoutStrategy:
       type: string
@@ -1504,6 +1572,14 @@ components:
             The number of parallel TCP connections to use for migration.
             Must be between 1 and 128. Multiple connections are not supported
             with local UNIX-socket migration.
+        tls_dir:
+          type: string
+          description: >
+            Directory containing the TLS root CA certificate (ca-cert.pem), the TLS client
+            certificate (client-cert.pem), and TLS client key (client-key.pem).
+            TLS is only supported with tcp:<host>:<port> destination URLs.
+        memory_mode:
+          $ref: "#/components/schemas/MigrationMode"
 
     VmAddUserDevice:
       required:
