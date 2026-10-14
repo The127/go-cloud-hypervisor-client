@@ -68,6 +68,7 @@ func (e CoreSchedulingMode) Valid() bool {
 // Defines values for ImageType.
 const (
 	FixedVhd ImageType = "FixedVhd"
+	FlatVmdk ImageType = "FlatVmdk"
 	Qcow2    ImageType = "Qcow2"
 	Raw      ImageType = "Raw"
 	Unknown  ImageType = "Unknown"
@@ -79,6 +80,8 @@ func (e ImageType) Valid() bool {
 	switch e {
 	case FixedVhd:
 		return true
+	case FlatVmdk:
+		return true
 	case Qcow2:
 		return true
 	case Raw:
@@ -86,6 +89,27 @@ func (e ImageType) Valid() bool {
 	case Unknown:
 		return true
 	case Vhdx:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for IommuType.
+const (
+	IommuTypeOff    IommuType = "Off"
+	IommuTypeSmmuv3 IommuType = "Smmuv3"
+	IommuTypeVirtio IommuType = "Virtio"
+)
+
+// Valid indicates whether the value is a known member of the IommuType enum.
+func (e IommuType) Valid() bool {
+	switch e {
+	case IommuTypeOff:
+		return true
+	case IommuTypeSmmuv3:
+		return true
+	case IommuTypeVirtio:
 		return true
 	default:
 		return false
@@ -112,14 +136,17 @@ func (e LockGranularity) Valid() bool {
 
 // Defines values for MemoryRestoreMode.
 const (
-	Copy     MemoryRestoreMode = "Copy"
-	OnDemand MemoryRestoreMode = "OnDemand"
+	Copy        MemoryRestoreMode = "Copy"
+	CopyOnWrite MemoryRestoreMode = "CopyOnWrite"
+	OnDemand    MemoryRestoreMode = "OnDemand"
 )
 
 // Valid indicates whether the value is a known member of the MemoryRestoreMode enum.
 func (e MemoryRestoreMode) Valid() bool {
 	switch e {
 	case Copy:
+		return true
+	case CopyOnWrite:
 		return true
 	case OnDemand:
 		return true
@@ -130,6 +157,7 @@ func (e MemoryRestoreMode) Valid() bool {
 
 // Defines values for MigrationMode.
 const (
+	MemFDs   MigrationMode = "MemFDs"
 	Postcopy MigrationMode = "Postcopy"
 	Precopy  MigrationMode = "Precopy"
 )
@@ -137,6 +165,8 @@ const (
 // Valid indicates whether the value is a known member of the MigrationMode enum.
 func (e MigrationMode) Valid() bool {
 	switch e {
+	case MemFDs:
+		return true
 	case Postcopy:
 		return true
 	case Precopy:
@@ -166,15 +196,18 @@ func (e TimeoutStrategy) Valid() bool {
 
 // Defines values for VmState.
 const (
-	Created  VmState = "Created"
-	Paused   VmState = "Paused"
-	Running  VmState = "Running"
-	Shutdown VmState = "Shutdown"
+	BreakPoint VmState = "BreakPoint"
+	Created    VmState = "Created"
+	Paused     VmState = "Paused"
+	Running    VmState = "Running"
+	Shutdown   VmState = "Shutdown"
 )
 
 // Valid indicates whether the value is a known member of the VmState enum.
 func (e VmState) Valid() bool {
 	switch e {
+	case BreakPoint:
+		return true
 	case Created:
 		return true
 	case Paused:
@@ -196,17 +229,82 @@ type BalloonConfig struct {
 	// FreePageReporting Enable guest to report free pages.
 	FreePageReporting *bool   `json:"free_page_reporting,omitempty"`
 	Id                *string `json:"id,omitempty"`
-	Iommu             *bool   `json:"iommu,omitempty"`
-	PciDeviceId       *uint8  `json:"pci_device_id,omitempty"`
-	PciSegment        *int16  `json:"pci_segment,omitempty"`
-	Size              int64   `json:"size"`
+
+	// Iommu Virtual IOMMU the device is attached to.
+	Iommu       *IommuType `json:"iommu,omitempty"`
+	PciDeviceId *uint8     `json:"pci_device_id,omitempty"`
+	PciSegment  *int16     `json:"pci_segment,omitempty"`
+	Size        int64      `json:"size"`
+}
+
+// BalloonStats defines model for BalloonStats.
+type BalloonStats struct {
+	// AllocStalls Number of guest memory allocation stalls reported by Linux
+	AllocStalls *int64 `json:"alloc_stalls,omitempty"`
+
+	// AsyncReclaims Memory reclaimed asynchronously by Linux in bytes
+	AsyncReclaims *int64 `json:"async_reclaims,omitempty"`
+
+	// AsyncScans Memory scanned asynchronously by Linux in bytes
+	AsyncScans *int64 `json:"async_scans,omitempty"`
+
+	// AvailableMemory Guest memory available without swapping in bytes
+	AvailableMemory *int64 `json:"available_memory,omitempty"`
+
+	// DirectReclaims Memory reclaimed directly by Linux in bytes
+	DirectReclaims *int64 `json:"direct_reclaims,omitempty"`
+
+	// DirectScans Memory scanned directly by Linux in bytes
+	DirectScans *int64 `json:"direct_scans,omitempty"`
+
+	// DiskCaches Reclaimable guest disk caches in bytes
+	DiskCaches *int64 `json:"disk_caches,omitempty"`
+
+	// FreeMemory Unused guest memory in bytes
+	FreeMemory *int64 `json:"free_memory,omitempty"`
+
+	// HugetlbAllocations Number of successful hugetlb allocations
+	HugetlbAllocations *int64 `json:"hugetlb_allocations,omitempty"`
+
+	// HugetlbFailures Number of failed hugetlb allocations
+	HugetlbFailures *int64 `json:"hugetlb_failures,omitempty"`
+
+	// MajorFaults Number of major page faults
+	MajorFaults *int64 `json:"major_faults,omitempty"`
+
+	// MinorFaults Number of minor page faults
+	MinorFaults *int64 `json:"minor_faults,omitempty"`
+
+	// OomKills Number of guest OOM kills reported by Linux
+	OomKills *int64 `json:"oom_kills,omitempty"`
+
+	// SwapIn Memory swapped into the guest in bytes
+	SwapIn *int64 `json:"swap_in,omitempty"`
+
+	// SwapOut Memory swapped out by the guest in bytes
+	SwapOut *int64 `json:"swap_out,omitempty"`
+
+	// TotalMemory Total guest memory in bytes
+	TotalMemory *int64 `json:"total_memory,omitempty"`
+}
+
+// BalloonStatsResponse defines model for BalloonStatsResponse.
+type BalloonStatsResponse struct {
+	// BalloonActual Current balloon size in bytes
+	BalloonActual int64 `json:"balloon_actual"`
+
+	// LastUpdate Host UNIX timestamp in milliseconds when statistics were last updated, or zero before the first sample
+	LastUpdate int64        `json:"last_update"`
+	Stats      BalloonStats `json:"stats"`
 }
 
 // ConsoleConfig defines model for ConsoleConfig.
 type ConsoleConfig struct {
-	File        *string     `json:"file,omitempty"`
-	Id          *string     `json:"id,omitempty"`
-	Iommu       *bool       `json:"iommu,omitempty"`
+	File *string `json:"file,omitempty"`
+	Id   *string `json:"id,omitempty"`
+
+	// Iommu Virtual IOMMU the device is attached to.
+	Iommu       *IommuType  `json:"iommu,omitempty"`
 	Mode        ConsoleMode `json:"mode"`
 	PciDeviceId *uint8      `json:"pci_device_id,omitempty"`
 	PciSegment  *int16      `json:"pci_segment,omitempty"`
@@ -260,8 +358,10 @@ type DebugConsoleConfig struct {
 
 // DeviceConfig defines model for DeviceConfig.
 type DeviceConfig struct {
-	Id    *string `json:"id,omitempty"`
-	Iommu *bool   `json:"iommu,omitempty"`
+	Id *string `json:"id,omitempty"`
+
+	// Iommu Virtual IOMMU the device is attached to.
+	Iommu *IommuType `json:"iommu,omitempty"`
 
 	// Path Sysfs path of the VFIO device. Exactly one of `path` or an
 	// externally-opened cdev FD must be supplied; an FD is passed
@@ -284,11 +384,16 @@ type DeviceNode struct {
 
 // DiskConfig defines model for DiskConfig.
 type DiskConfig struct {
-	BackingFiles    *bool                `json:"backing_files,omitempty"`
-	Direct          *bool                `json:"direct,omitempty"`
-	Id              *string              `json:"id,omitempty"`
-	ImageType       *ImageType           `json:"image_type,omitempty"`
-	Iommu           *bool                `json:"iommu,omitempty"`
+	BackingFiles   *bool   `json:"backing_files,omitempty"`
+	Direct         *bool   `json:"direct,omitempty"`
+	GuestBlockSize *int    `json:"guest_block_size,omitempty"`
+	Id             *string `json:"id,omitempty"`
+
+	// ImageType Unknown is only valid for vhost-user disks.
+	ImageType *ImageType `json:"image_type,omitempty"`
+
+	// Iommu Virtual IOMMU the device is attached to.
+	Iommu           *IommuType           `json:"iommu,omitempty"`
 	LockGranularity *LockGranularity     `json:"lock_granularity,omitempty"`
 	NumQueues       *int                 `json:"num_queues,omitempty"`
 	Path            *string              `json:"path,omitempty"`
@@ -321,14 +426,18 @@ type FsConfig struct {
 // GenericVhostUserConfig defines model for GenericVhostUserConfig.
 type GenericVhostUserConfig struct {
 	DeviceType  uint32   `json:"device_type"`
+	Id          *string  `json:"id,omitempty"`
 	PciDeviceId *uint8   `json:"pci_device_id,omitempty"`
 	PciSegment  *int16   `json:"pci_segment,omitempty"`
 	QueueSizes  []uint16 `json:"queue_sizes"`
 	Socket      string   `json:"socket"`
 }
 
-// ImageType defines model for ImageType.
+// ImageType Unknown is only valid for vhost-user disks.
 type ImageType string
+
+// IommuType Virtual IOMMU the device is attached to.
+type IommuType string
 
 // LandlockConfig defines model for LandlockConfig.
 type LandlockConfig struct {
@@ -374,14 +483,16 @@ type MemoryZoneConfig struct {
 	Size           int64   `json:"size"`
 }
 
-// MigrationMode Memory transfer mode. Precopy transfers all guest memory before the destination resumes. Postcopy resumes the destination first and faults guest pages in on demand.
+// MigrationMode Memory transfer mode. MemFDs passes the guest memory backing file descriptors to the destination over a UNIX socket. MemFDs requires every guest memory region to use shared memory or hugepage backing. Precopy transfers all guest memory before the destination resumes. Postcopy resumes the destination first and faults guest pages in on demand.
 type MigrationMode string
 
 // NetConfig defines model for NetConfig.
 type NetConfig struct {
 	HostMac *string `json:"host_mac,omitempty"`
 	Id      *string `json:"id,omitempty"`
-	Iommu   *bool   `json:"iommu,omitempty"`
+
+	// Iommu Virtual IOMMU the device is attached to.
+	Iommu *IommuType `json:"iommu,omitempty"`
 
 	// Ip IPv4 or IPv6 address
 	Ip  *string `json:"ip,omitempty"`
@@ -474,10 +585,12 @@ type PmemConfig struct {
 	DiscardWrites *bool   `json:"discard_writes,omitempty"`
 	File          string  `json:"file"`
 	Id            *string `json:"id,omitempty"`
-	Iommu         *bool   `json:"iommu,omitempty"`
-	PciDeviceId   *uint8  `json:"pci_device_id,omitempty"`
-	PciSegment    *int16  `json:"pci_segment,omitempty"`
-	Size          *int64  `json:"size,omitempty"`
+
+	// Iommu Virtual IOMMU the device is attached to.
+	Iommu       *IommuType `json:"iommu,omitempty"`
+	PciDeviceId *uint8     `json:"pci_device_id,omitempty"`
+	PciSegment  *int16     `json:"pci_segment,omitempty"`
+	Size        *int64     `json:"size,omitempty"`
 }
 
 // RateLimitGroupConfig defines model for RateLimitGroupConfig.
@@ -499,51 +612,63 @@ type RateLimiterConfig struct {
 
 // ReceiveMigrationData defines model for ReceiveMigrationData.
 type ReceiveMigrationData struct {
-	// MemoryMode Memory transfer mode. Precopy transfers all guest memory before the destination resumes. Postcopy resumes the destination first and faults guest pages in on demand.
-	MemoryMode  *MigrationMode `json:"memory_mode,omitempty"`
-	ReceiverUrl string         `json:"receiver_url"`
+	// BackgroundFetchPages Enable the background thread for faulting all remaining pages.
+	BackgroundFetchPages *bool  `json:"background_fetch_pages,omitempty"`
+	ReceiverUrl          string `json:"receiver_url"`
 
-	// TlsDir Directory containing the TLS server certificate (server-cert.pem), the TLS server key (server-key.pem), and the client TLS root CA certificate (ca-cert.pem). TLS is only supported with tcp:<host>:<port> receiver URLs.
-	TlsDir *string `json:"tls_dir,omitempty"`
+	// TlsDir Directory containing the TLS server certificate (server-cert.pem), the TLS server key (server-key.pem), and the client TLS root CA certificate (ca-cert.pem). TLS is only supported with tcp:<host>:<port> receiver URLs. Recommended for all TCP migrations. Omitting it is only intended for development and testing, as TCP migration is then unencrypted and unauthenticated.
+	TlsDir      *string                   `json:"tls_dir,omitempty"`
+	ZoneUpdates *[]VmMemoryZoneUpdateData `json:"zone_updates,omitempty"`
 }
 
 // RestoreConfig defines model for RestoreConfig.
 type RestoreConfig struct {
-	MemoryRestoreMode *MemoryRestoreMode `json:"memory_restore_mode,omitempty"`
-	Prefault          *bool              `json:"prefault,omitempty"`
-	Resume            *bool              `json:"resume,omitempty"`
-	SourceUrl         string             `json:"source_url"`
+	MemoryRestoreMode *MemoryRestoreMode        `json:"memory_restore_mode,omitempty"`
+	Prefault          *bool                     `json:"prefault,omitempty"`
+	Resume            *bool                     `json:"resume,omitempty"`
+	SourceUrl         string                    `json:"source_url"`
+	ZoneUpdates       *[]VmMemoryZoneUpdateData `json:"zone_updates,omitempty"`
 }
 
 // RngConfig defines model for RngConfig.
 type RngConfig struct {
-	Id          *string `json:"id,omitempty"`
-	Iommu       *bool   `json:"iommu,omitempty"`
-	PciDeviceId *uint8  `json:"pci_device_id,omitempty"`
-	PciSegment  *int16  `json:"pci_segment,omitempty"`
-	Src         string  `json:"src"`
+	Id *string `json:"id,omitempty"`
+
+	// Iommu Virtual IOMMU the device is attached to.
+	Iommu       *IommuType `json:"iommu,omitempty"`
+	PciDeviceId *uint8     `json:"pci_device_id,omitempty"`
+	PciSegment  *int16     `json:"pci_segment,omitempty"`
+	Src         string     `json:"src"`
 }
 
 // RtcConfig defines model for RtcConfig.
 type RtcConfig struct {
-	Id          *string `json:"id,omitempty"`
-	Iommu       *bool   `json:"iommu,omitempty"`
-	PciDeviceId *uint8  `json:"pci_device_id,omitempty"`
-	PciSegment  *int16  `json:"pci_segment,omitempty"`
+	Id *string `json:"id,omitempty"`
+
+	// Iommu Virtual IOMMU the device is attached to.
+	Iommu       *IommuType `json:"iommu,omitempty"`
+	PciDeviceId *uint8     `json:"pci_device_id,omitempty"`
+	PciSegment  *int16     `json:"pci_segment,omitempty"`
 }
 
 // SendMigrationData defines model for SendMigrationData.
 type SendMigrationData struct {
-	// Connections The number of parallel TCP connections to use for migration. Must be between 1 and 128. Multiple connections are not supported with local UNIX-socket migration.
+	// Connections The number of parallel TCP connections to use for migration. Must be between 1 and 128. Multiple connections are not supported with UNIX domain socket migration.
 	Connections    *int64 `json:"connections,omitempty"`
 	DestinationUrl string `json:"destination_url"`
 
 	// DowntimeMs The maximum downtime the migration aims for, in milliseconds. Defaults to 300ms.
 	DowntimeMs *int64 `json:"downtime_ms,omitempty"`
-	Local      *bool  `json:"local,omitempty"`
 
-	// MemoryMode Memory transfer mode. Precopy transfers all guest memory before the destination resumes. Postcopy resumes the destination first and faults guest pages in on demand.
+	// Local Deprecated: set memory_mode to "MemFDs" instead. If true, the request is treated as if memory_mode were "MemFDs".
+	// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
+	Local *bool `json:"local,omitempty"`
+
+	// MemoryMode Memory transfer mode. MemFDs passes the guest memory backing file descriptors to the destination over a UNIX socket. MemFDs requires every guest memory region to use shared memory or hugepage backing. Precopy transfers all guest memory before the destination resumes. Postcopy resumes the destination first and faults guest pages in on demand.
 	MemoryMode *MigrationMode `json:"memory_mode,omitempty"`
+
+	// PreserveSource Keep the source VM alive in a paused state after migration completes. This is only supported when memory_mode is "MemFDs" or the deprecated local property is true.
+	PreserveSource *bool `json:"preserve_source,omitempty"`
 
 	// TimeoutS The timeout for the migration (maximum total duration), in seconds. Defaults to 3600s (one hour).
 	TimeoutS *int64 `json:"timeout_s,omitempty"`
@@ -551,7 +676,7 @@ type SendMigrationData struct {
 	// TimeoutStrategy The strategy to apply when the migration timeout is reached. Cancel will abort the migration and keep the VM running on the source. Ignore will proceed with the migration regardless of the downtime requirement.
 	TimeoutStrategy *TimeoutStrategy `json:"timeout_strategy,omitempty"`
 
-	// TlsDir Directory containing the TLS root CA certificate (ca-cert.pem), the TLS client certificate (client-cert.pem), and TLS client key (client-key.pem). TLS is only supported with tcp:<host>:<port> destination URLs.
+	// TlsDir Directory containing the TLS root CA certificate (ca-cert.pem), the TLS client certificate (client-cert.pem), and TLS client key (client-key.pem). TLS is only supported with tcp:<host>:<port> destination URLs. Recommended for all TCP migrations. Omitting it is only intended for development and testing, as TCP migration is then unencrypted and unauthenticated.
 	TlsDir *string `json:"tls_dir,omitempty"`
 }
 
@@ -592,12 +717,14 @@ type UserDeviceConfig struct {
 
 // VdpaConfig defines model for VdpaConfig.
 type VdpaConfig struct {
-	Id          *string `json:"id,omitempty"`
-	Iommu       *bool   `json:"iommu,omitempty"`
-	NumQueues   int     `json:"num_queues"`
-	Path        string  `json:"path"`
-	PciDeviceId *uint8  `json:"pci_device_id,omitempty"`
-	PciSegment  *int16  `json:"pci_segment,omitempty"`
+	Id *string `json:"id,omitempty"`
+
+	// Iommu Virtual IOMMU the device is attached to.
+	Iommu       *IommuType `json:"iommu,omitempty"`
+	NumQueues   int        `json:"num_queues"`
+	Path        string     `json:"path"`
+	PciDeviceId *uint8     `json:"pci_device_id,omitempty"`
+	PciSegment  *int16     `json:"pci_segment,omitempty"`
 }
 
 // VirtQueueAffinity defines model for VirtQueueAffinity.
@@ -622,8 +749,7 @@ type VmConfig struct {
 	Devices          *[]DeviceConfig           `json:"devices,omitempty"`
 	Disks            *[]DiskConfig             `json:"disks,omitempty"`
 	Fs               *[]FsConfig               `json:"fs,omitempty"`
-	GenericVhostUser *[]GenericVhostUserConfig `json:"generic-vhost-user,omitempty"`
-	Iommu            *bool                     `json:"iommu,omitempty"`
+	GenericVhostUser *[]GenericVhostUserConfig `json:"generic_vhost_user,omitempty"`
 	LandlockEnable   *bool                     `json:"landlock_enable,omitempty"`
 	LandlockRules    *[]LandlockConfig         `json:"landlock_rules,omitempty"`
 	Memory           *MemoryConfig             `json:"memory,omitempty"`
@@ -662,6 +788,12 @@ type VmInfo struct {
 	DeviceTree       *map[string]DeviceNode `json:"device_tree,omitempty"`
 	MemoryActualSize *int64                 `json:"memory_actual_size,omitempty"`
 	State            VmState                `json:"state"`
+}
+
+// VmMemoryZoneUpdateData defines model for VmMemoryZoneUpdateData.
+type VmMemoryZoneUpdateData struct {
+	HostNumaNode uint32 `json:"host_numa_node"`
+	Id           string `json:"id"`
 }
 
 // VmRemoveDevice defines model for VmRemoveDevice.
@@ -714,11 +846,13 @@ type VmmPingResponse struct {
 // VsockConfig defines model for VsockConfig.
 type VsockConfig struct {
 	// Cid Guest Vsock CID
-	Cid         int64   `json:"cid"`
-	Id          *string `json:"id,omitempty"`
-	Iommu       *bool   `json:"iommu,omitempty"`
-	PciDeviceId *uint8  `json:"pci_device_id,omitempty"`
-	PciSegment  *int16  `json:"pci_segment,omitempty"`
+	Cid int64   `json:"cid"`
+	Id  *string `json:"id,omitempty"`
+
+	// Iommu Virtual IOMMU the device is attached to.
+	Iommu       *IommuType `json:"iommu,omitempty"`
+	PciDeviceId *uint8     `json:"pci_device_id,omitempty"`
+	PciSegment  *int16     `json:"pci_segment,omitempty"`
 
 	// Socket Path to UNIX domain socket, used to proxy vsock connections.
 	Socket string `json:"socket"`
@@ -981,10 +1115,22 @@ type ClientInterface interface {
 	// Corresponds with PUT /vm.add-vsock (the `PutVmAddVsock` operationId).
 	PutVmAddVsock(ctx context.Context, body PutVmAddVsockJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetVmBalloonStats Get cached statistics from the virtio-balloon device
+	//
+	// Corresponds with GET /vm.balloon-stats (the `GetVmBalloonStats` operationId).
+	GetVmBalloonStats(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// BootVM Boot the previously created VM instance.
 	//
 	// Corresponds with PUT /vm.boot (the `BootVM` operationId).
 	BootVM(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PutVmCancelMigration Cancel an ongoing VM migration
+	//
+	// Requests the cancellation of an ongoing migration on a best effort basis. A successful response only indicates that the request was accepted, not that the migration was actually cancelled: The migration may have progressed too far to be stopped. The actual outcome must be observed externally via the event monitor.
+	//
+	// Corresponds with PUT /vm.cancel-migration (the `PutVmCancelMigration` operationId).
+	PutVmCancelMigration(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PutVmCoredumpWithBody Takes a VM coredump.
 	//
@@ -1488,11 +1634,43 @@ func (c *Client) PutVmAddVsock(ctx context.Context, body PutVmAddVsockJSONReques
 	return c.Client.Do(req)
 }
 
+// GetVmBalloonStats Get cached statistics from the virtio-balloon device
+//
+// Corresponds with GET /vm.balloon-stats (the `GetVmBalloonStats` operationId).
+func (c *Client) GetVmBalloonStats(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetVmBalloonStatsRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // BootVM Boot the previously created VM instance.
 //
 // Corresponds with PUT /vm.boot (the `BootVM` operationId).
 func (c *Client) BootVM(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewBootVMRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PutVmCancelMigration Cancel an ongoing VM migration
+//
+// Requests the cancellation of an ongoing migration on a best effort basis. A successful response only indicates that the request was accepted, not that the migration was actually cancelled: The migration may have progressed too far to be stopped. The actual outcome must be observed externally via the event monitor.
+//
+// Corresponds with PUT /vm.cancel-migration (the `PutVmCancelMigration` operationId).
+func (c *Client) PutVmCancelMigration(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPutVmCancelMigrationRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -2368,6 +2546,33 @@ func NewPutVmAddVsockRequestWithBody(server string, contentType string, body io.
 	return req, nil
 }
 
+// NewGetVmBalloonStatsRequest constructs an http.Request for the GetVmBalloonStats method
+func NewGetVmBalloonStatsRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/vm.balloon-stats")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewBootVMRequest constructs an http.Request for the BootVM method
 func NewBootVMRequest(server string) (*http.Request, error) {
 	var err error
@@ -2378,6 +2583,33 @@ func NewBootVMRequest(server string) (*http.Request, error) {
 	}
 
 	operationPath := fmt.Sprintf("/vm.boot")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewPutVmCancelMigrationRequest constructs an http.Request for the PutVmCancelMigration method
+func NewPutVmCancelMigrationRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/vm.cancel-migration")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -3262,12 +3494,28 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with PUT /vm.add-vsock (the `PutVmAddVsock` operationId).
 	PutVmAddVsockWithResponse(ctx context.Context, body PutVmAddVsockJSONRequestBody, reqEditors ...RequestEditorFn) (*PutVmAddVsockResponse, error)
 
+	// GetVmBalloonStatsWithResponse Get cached statistics from the virtio-balloon device
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /vm.balloon-stats (the `GetVmBalloonStats` operationId).
+	GetVmBalloonStatsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetVmBalloonStatsResponse, error)
+
 	// BootVMWithResponse Boot the previously created VM instance.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with PUT /vm.boot (the `BootVM` operationId).
 	BootVMWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*BootVMResponse, error)
+
+	// PutVmCancelMigrationWithResponse Cancel an ongoing VM migration
+	//
+	// Requests the cancellation of an ongoing migration on a best effort basis. A successful response only indicates that the request was accepted, not that the migration was actually cancelled: The migration may have progressed too far to be stopped. The actual outcome must be observed externally via the event monitor.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /vm.cancel-migration (the `PutVmCancelMigration` operationId).
+	PutVmCancelMigrationWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*PutVmCancelMigrationResponse, error)
 
 	// PutVmCoredumpWithBodyWithResponse Takes a VM coredump.
 	//
@@ -3856,6 +4104,47 @@ func (r PutVmAddVsockResponse) ContentType() string {
 	return ""
 }
 
+type GetVmBalloonStatsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *BalloonStatsResponse
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetVmBalloonStatsResponse) GetJSON200() *BalloonStatsResponse {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r GetVmBalloonStatsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetVmBalloonStatsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetVmBalloonStatsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetVmBalloonStatsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type BootVMResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -3884,6 +4173,40 @@ func (r BootVMResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r BootVMResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type PutVmCancelMigrationResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+}
+
+// GetBody returns the raw response body bytes
+func (r PutVmCancelMigrationResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r PutVmCancelMigrationResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PutVmCancelMigrationResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PutVmCancelMigrationResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -4859,6 +5182,19 @@ func (c *ClientWithResponses) PutVmAddVsockWithResponse(ctx context.Context, bod
 	return ParsePutVmAddVsockResponse(rsp)
 }
 
+// GetVmBalloonStatsWithResponse Get cached statistics from the virtio-balloon device
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /vm.balloon-stats (the `GetVmBalloonStats` operationId).
+func (c *ClientWithResponses) GetVmBalloonStatsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetVmBalloonStatsResponse, error) {
+	rsp, err := c.GetVmBalloonStats(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetVmBalloonStatsResponse(rsp)
+}
+
 // BootVMWithResponse Boot the previously created VM instance.
 //
 // Returns a wrapper object for the known response body format(s).
@@ -4870,6 +5206,21 @@ func (c *ClientWithResponses) BootVMWithResponse(ctx context.Context, reqEditors
 		return nil, err
 	}
 	return ParseBootVMResponse(rsp)
+}
+
+// PutVmCancelMigrationWithResponse Cancel an ongoing VM migration
+//
+// Requests the cancellation of an ongoing migration on a best effort basis. A successful response only indicates that the request was accepted, not that the migration was actually cancelled: The migration may have progressed too far to be stopped. The actual outcome must be observed externally via the event monitor.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /vm.cancel-migration (the `PutVmCancelMigration` operationId).
+func (c *ClientWithResponses) PutVmCancelMigrationWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*PutVmCancelMigrationResponse, error) {
+	rsp, err := c.PutVmCancelMigration(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePutVmCancelMigrationResponse(rsp)
 }
 
 // PutVmCoredumpWithBodyWithResponse Takes a VM coredump.
@@ -5299,7 +5650,13 @@ func ParsePutVmAddDeviceResponse(rsp *http.Response) (*PutVmAddDeviceResponse, e
 	case rsp.StatusCode == 204:
 		break // No content-type
 
+	case rsp.StatusCode == 400:
+		break // No content-type
+
 	case rsp.StatusCode == 404:
+		break // No content-type
+
+	case rsp.StatusCode == 409:
 		break // No content-type
 
 	}
@@ -5329,6 +5686,15 @@ func ParsePutVmAddDiskResponse(rsp *http.Response) (*PutVmAddDiskResponse, error
 		response.JSON200 = &dest
 
 	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case rsp.StatusCode == 400:
+		break // No content-type
+
+	case rsp.StatusCode == 404:
+		break // No content-type
+
+	case rsp.StatusCode == 409:
 		break // No content-type
 
 	case rsp.StatusCode == 500:
@@ -5363,6 +5729,15 @@ func ParsePutVmAddFsResponse(rsp *http.Response) (*PutVmAddFsResponse, error) {
 	case rsp.StatusCode == 204:
 		break // No content-type
 
+	case rsp.StatusCode == 400:
+		break // No content-type
+
+	case rsp.StatusCode == 404:
+		break // No content-type
+
+	case rsp.StatusCode == 409:
+		break // No content-type
+
 	case rsp.StatusCode == 500:
 		break // No content-type
 
@@ -5393,6 +5768,15 @@ func ParsePutVmAddGenericVhostUserResponse(rsp *http.Response) (*PutVmAddGeneric
 		response.JSON200 = &dest
 
 	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case rsp.StatusCode == 400:
+		break // No content-type
+
+	case rsp.StatusCode == 404:
+		break // No content-type
+
+	case rsp.StatusCode == 409:
 		break // No content-type
 
 	case rsp.StatusCode == 500:
@@ -5427,6 +5811,15 @@ func ParsePutVmAddNetResponse(rsp *http.Response) (*PutVmAddNetResponse, error) 
 	case rsp.StatusCode == 204:
 		break // No content-type
 
+	case rsp.StatusCode == 400:
+		break // No content-type
+
+	case rsp.StatusCode == 404:
+		break // No content-type
+
+	case rsp.StatusCode == 409:
+		break // No content-type
+
 	case rsp.StatusCode == 500:
 		break // No content-type
 
@@ -5457,6 +5850,15 @@ func ParsePutVmAddPmemResponse(rsp *http.Response) (*PutVmAddPmemResponse, error
 		response.JSON200 = &dest
 
 	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case rsp.StatusCode == 400:
+		break // No content-type
+
+	case rsp.StatusCode == 404:
+		break // No content-type
+
+	case rsp.StatusCode == 409:
 		break // No content-type
 
 	case rsp.StatusCode == 500:
@@ -5491,7 +5893,13 @@ func ParsePutVmAddUserDeviceResponse(rsp *http.Response) (*PutVmAddUserDeviceRes
 	case rsp.StatusCode == 204:
 		break // No content-type
 
+	case rsp.StatusCode == 400:
+		break // No content-type
+
 	case rsp.StatusCode == 404:
+		break // No content-type
+
+	case rsp.StatusCode == 409:
 		break // No content-type
 
 	}
@@ -5521,6 +5929,15 @@ func ParsePutVmAddVdpaResponse(rsp *http.Response) (*PutVmAddVdpaResponse, error
 		response.JSON200 = &dest
 
 	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case rsp.StatusCode == 400:
+		break // No content-type
+
+	case rsp.StatusCode == 404:
+		break // No content-type
+
+	case rsp.StatusCode == 409:
 		break // No content-type
 
 	case rsp.StatusCode == 500:
@@ -5555,6 +5972,47 @@ func ParsePutVmAddVsockResponse(rsp *http.Response) (*PutVmAddVsockResponse, err
 	case rsp.StatusCode == 204:
 		break // No content-type
 
+	case rsp.StatusCode == 400:
+		break // No content-type
+
+	case rsp.StatusCode == 404:
+		break // No content-type
+
+	case rsp.StatusCode == 409:
+		break // No content-type
+
+	case rsp.StatusCode == 500:
+		break // No content-type
+
+	}
+
+	return response, nil
+}
+
+// ParseGetVmBalloonStatsResponse parses an HTTP response from a GetVmBalloonStatsWithResponse call
+func ParseGetVmBalloonStatsResponse(rsp *http.Response) (*GetVmBalloonStatsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetVmBalloonStatsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest BalloonStatsResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case rsp.StatusCode == 409:
+		break // No content-type
+
 	case rsp.StatusCode == 500:
 		break // No content-type
 
@@ -5572,6 +6030,22 @@ func ParseBootVMResponse(rsp *http.Response) (*BootVMResponse, error) {
 	}
 
 	response := &BootVMResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	return response, nil
+}
+
+// ParsePutVmCancelMigrationResponse parses an HTTP response from a PutVmCancelMigrationWithResponse call
+func ParsePutVmCancelMigrationResponse(rsp *http.Response) (*PutVmCancelMigrationResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PutVmCancelMigrationResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -5615,6 +6089,9 @@ func ParseGetVmCountersResponse(rsp *http.Response) (*GetVmCountersResponse, err
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	case rsp.StatusCode == 409:
+		break // No content-type
 
 	}
 
@@ -5673,6 +6150,9 @@ func ParseGetVmInfoResponse(rsp *http.Response) (*GetVmInfoResponse, error) {
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	case rsp.StatusCode == 404:
+		break // No content-type
 
 	}
 
